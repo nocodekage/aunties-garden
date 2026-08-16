@@ -112,8 +112,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   background:var(--lawn);transition:width .5s var(--ease)}
 .nav-link:hover,.nav-link.on{color:var(--bone)}
 .nav-link.on::after{width:100%}
-.nav-burger{display:none;width:34px;height:34px;flex-direction:column;justify-content:center;gap:6px}
-.nav-burger i{display:block;height:1px;background:var(--bone);transition:transform .4s var(--ease)}
+.nav-burger{display:none;width:44px;height:44px;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;position:relative;z-index:51;border-radius:50%;
+  transition:background .3s var(--ease),border-color .3s var(--ease);
+  border:1px solid transparent}
+.nav-burger i{display:block;width:22px;height:2px;background:var(--bone);border-radius:2px;
+  transition:transform .4s var(--ease),width .3s var(--ease)}
+/* once it is an X it needs to read as a close control, not as decoration */
+.nav-burger.x{background:rgba(231,234,217,.10);border-color:rgba(231,234,217,.34)}
 
 /* ============================================================== hero */
 .hero{min-height:100svh;padding:calc(var(--nav-h) + 4vh) var(--pad) 5vh;
@@ -263,6 +269,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   text-transform:uppercase;color:var(--muted)}
 
 /* ============================================================== cursor */
+.nav-close{display:none}
 .cur-dot{position:fixed;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;
   border:1px solid rgba(231,234,217,.55);border-radius:50%;z-index:70;pointer-events:none;
   opacity:0;transform:scale(.6);transition:opacity .3s,transform .3s var(--ease);mix-blend-mode:difference}
@@ -308,14 +315,28 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   .foot-grid{grid-template-columns:1fr;gap:34px}
 }
 @media (max-width:760px){
-  .nav-links{position:fixed;inset:0;background:rgba(10,15,10,.97);flex-direction:column;
+  /* The menu is position:fixed and lives inside .nav, so .nav must not become
+     a containing block for it. backdrop-filter does exactly that - with the
+     blur on, this overlay collapsed from 375x812 to 375x84 the moment the
+     nav went solid on scroll, which cut the links off and took the dark
+     backdrop with them. The overlay is opaque anyway; the blur bought
+     nothing here. Do not put filter, transform or will-change on .nav. */
+  .nav.solid{backdrop-filter:none;-webkit-backdrop-filter:none}
+  .nav-links{position:fixed;inset:0;background:rgba(9,13,9,.975);flex-direction:column;
     align-items:center;justify-content:center;gap:26px;opacity:0;visibility:hidden;
     transition:opacity .45s var(--ease),visibility .45s;z-index:49}
   .nav-links.open{opacity:1;visibility:visible}
-  .nav-link{font-size:18px;letter-spacing:.06em}
+  .nav-link{font-size:20px;letter-spacing:.06em;padding:12px 22px;color:var(--bone)}
+  .nav-link.on::after{width:38px;left:50%;transform:translateX(-50%)}
   .nav-burger{display:flex}
-  .nav-burger.x i:first-child{transform:translateY(3.5px) rotate(45deg)}
-  .nav-burger.x i:last-child{transform:translateY(-3.5px) rotate(-45deg)}
+  .nav-burger.x i:first-child{transform:translateY(4.5px) rotate(45deg)}
+  .nav-burger.x i:last-child{transform:translateY(-4.5px) rotate(-45deg)}
+  /* a plain-language way out, under the links */
+  .nav-close{display:block;position:fixed;left:50%;bottom:9vh;transform:translateX(-50%);
+    z-index:51;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--muted);padding:14px 26px;border:1px solid var(--line);border-radius:2px;
+    opacity:0;visibility:hidden;transition:opacity .45s var(--ease),visibility .45s}
+  .nav-links.open ~ .nav-close{opacity:1;visibility:visible}
   .hero{padding-top:calc(var(--nav-h) + 2vh)}
   .hero-foot{flex-direction:column;align-items:stretch;gap:24px}
   .chapters{max-width:none}
@@ -363,7 +384,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     <a class="nav-link" href="#moon" data-cursor>Moonlight</a>
     <a class="nav-link" href="#blossom" data-cursor>Blossom</a>
   </nav>
-  <button class="nav-burger" aria-label="Menu" data-cursor><i></i><i></i></button>
+  <button class="nav-burger" id="burger" aria-label="Open menu" aria-expanded="false"
+          aria-controls="navlinks" data-cursor><i></i><i></i></button>
+  <button class="nav-close" id="navclose" data-cursor>Close</button>
 </header>
 
 <div class="page" id="top">
@@ -2306,13 +2329,23 @@ function updateCorners(){
 }
 
 function wireNav(){
-  const links=$$('.nav-link'),burger=$('.nav-burger'),menu=$('#navlinks');
-  const close=()=>{menu.classList.remove('open');burger.classList.remove('x');document.body.classList.remove('is-locked');};
-  burger.addEventListener('click',()=>{
-    const open=menu.classList.toggle('open');
-    burger.classList.toggle('x',open);
-    document.body.classList.toggle('is-locked',open);
-  });
+  const links=$$('.nav-link'),burger=$('.nav-burger'),menu=$('#navlinks'),closeBtn=$('#navclose');
+  /* Every way out of this menu, because on a phone there is no browser
+     chrome to fall back on: the X, a labelled Close, the Escape key,
+     tapping the backdrop, and picking any destination. */
+  const setOpen=on=>{
+    menu.classList.toggle('open',on);
+    burger.classList.toggle('x',on);
+    document.body.classList.toggle('is-locked',on);
+    burger.setAttribute('aria-expanded',on?'true':'false');
+    burger.setAttribute('aria-label',on?'Close menu':'Open menu');
+  };
+  const close=()=>setOpen(false);
+  burger.addEventListener('click',()=>setOpen(!menu.classList.contains('open')));
+  if(closeBtn) closeBtn.addEventListener('click',close);
+  addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+  /* the backdrop is the menu itself; a tap that misses a link closes it */
+  menu.addEventListener('click',e=>{ if(e.target===menu) close(); });
   links.forEach(a=>a.addEventListener('click',close));
   $$('a[href^="#"]').forEach(a=>{
     a.addEventListener('click',ev=>{
