@@ -279,6 +279,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 #pre.has-error .pre-err{opacity:1;min-height:2.6em}
 #pre.has-error .pre-bar i{background:#d8845e}
 
+/* shown only when the page is opened off the disk and its own images are
+   therefore unreadable - see reportAssetFailure() */
+#file-warn{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:80;
+  max-width:min(660px,92vw);padding:14px 18px;border:1px solid rgba(216,132,94,.5);
+  background:rgba(10,14,9,.94);color:#e7ead9;font-size:12px;line-height:1.6;
+  letter-spacing:.01em;border-radius:2px}
+#file-warn b{color:#d8845e;font-weight:500}
+#file-warn code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+  background:rgba(255,255,255,.08);padding:1px 5px;border-radius:2px}
+
 /* no-webgl: the page has to stay readable */
 .no-webgl #gl,.no-webgl #vignette,.no-webgl #fg-sky{display:none}
 .no-webgl body{background:#0a0f0a}
@@ -925,11 +935,44 @@ function regTex(t){TEXREG.push(t);return t;}
    settled and the whole boot queue stopped behind it. Nothing was broken
    enough to throw - it just waited. A decode either lands inside the
    deadline or the scene carries on without that plate. */
+/* Opened straight off the disk, this file cannot use its own images.
+   The browser gives every file:// document its own opaque origin, so the
+   sibling webp loads fine but uploading it into a WebGL texture is refused
+   as cross-origin - and the two children under the cherry are exactly what
+   goes through that path. It used to fail in silence. Now it says so. */
+const FILE_PROTOCOL = location.protocol === 'file:';
+let ASSET_FAILURES = 0;
+
+/* A cross-origin image loads perfectly happily - it is only the moment you
+   try to READ its pixels that the browser objects. So the honest test is to
+   draw one pixel of it and ask for that pixel back: on a tainted canvas
+   getImageData throws, synchronously, before any of this reaches the GPU. */
+function usableAsTexture(img){
+  try{
+    const c=cvs(1,1), g2=c.getContext('2d');
+    g2.drawImage(img,0,0,1,1);
+    g2.getImageData(0,0,1,1);
+    return true;
+  }catch(e){ return false; }
+}
+
+function reportAssetFailure(){
+  if(++ASSET_FAILURES > 1 || !FILE_PROTOCOL) return;
+  const n=document.createElement('div');
+  n.id='file-warn';
+  n.innerHTML='<b>Opened from disk.</b> The browser blocks this page from '+
+    'using its own image files, so the children under the cherry tree and the '+
+    'far tree line are missing. Serve the folder over http instead &mdash; '+
+    '<code>python3 -m http.server 4173</code> &mdash; or open '+
+    '<code>standalone/index.html</code>, which carries its images inside it.';
+  document.body.appendChild(n);
+}
+
 function loadImage(src,ms){
   return new Promise(res=>{
     const img=new Image();
     let done=false;
-    const finish=v=>{ if(done)return; done=true; clearTimeout(timer); res(v); };
+    const finish=v=>{ if(done)return; done=true; clearTimeout(timer); if(!v)reportAssetFailure(); res(v); };
     const timer=setTimeout(()=>{
       console.warn('[garden] image timed out after '+ms+'ms, continuing without it');
       finish(null);
@@ -1523,7 +1566,8 @@ function buildCherry(){
 
 function buildKids(){
   return loadImage('garden-assets/kids-reading.webp',IMG_TIMEOUT).then(img=>{
-    if(!img) return;                       /* the garden stands without them */
+    /* the garden stands without them, but say why they are missing */
+    if(!img || !usableAsTexture(img)){ reportAssetFailure(); return; }
     {
       const t=regTex(new THREE.Texture(fitPlate(img,TEX.plate)));
       t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,maxAniso);t.needsUpdate=true;
@@ -1559,7 +1603,8 @@ function buildKids(){
 /* -------- the far backdrop: the real photographs, keyed --------------- */
 function backdropPlate(src,x,y,z,w){
   return loadImage(src,IMG_TIMEOUT).then(img=>{
-    if(!img) return null;                  /* the fog covers a missing plate */
+    /* the fog covers a missing plate */
+    if(!img || !usableAsTexture(img)){ reportAssetFailure(); return null; }
     const t=regTex(new THREE.Texture(fitPlate(img,TEX.plate)));
     t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,maxAniso);t.needsUpdate=true;
     const m=new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false,

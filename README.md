@@ -3,6 +3,24 @@
 A four-chapter walk through my auntie's garden, rebuilt live in Three.js and lit
 four different ways. Move the cursor to walk; scroll to go deeper.
 
+> **The entry point is `index.html` at the repo root.** That is the master, and
+> it is what GitHub Pages serves. It needs `garden-assets/` and `vendor/` sitting
+> beside it.
+>
+> **It must be served over http, not opened off the disk.** Double-clicking it
+> gives every file its own opaque origin, so the browser refuses to read the
+> project's own images into WebGL textures — the two children under the cherry
+> tree and the far tree line go missing, and nothing else looks wrong. The page
+> detects this and says so on screen. Any static server will do:
+>
+> ```bash
+> python3 -m http.server 4173
+> ```
+>
+> `standalone/index.html` is the same scene folded into a single 2.8 MB file with
+> every asset inlined. It has no dependencies, so it *does* work from the disk —
+> useful for sending to someone, not what Pages serves.
+
 ## What it does
 
 - Walks a live WebGL camera from the lawn, through the border, into the wood and
@@ -49,19 +67,25 @@ clumps, blossom, petals. Geometry is generated: the woodland trunk field with a
 glade carved around the cherry, the whorled blue spruce, the tiered dogwood, the
 border, the fence, the statue.
 
+The repo root *is* the site — there is no build step and no `dist/`, so what
+you see here is what gets served.
+
 ```text
 aunties-garden/
-├── index.html                  the whole thing
-├── her-garden.html             the same scene folded into one file
-├── index-kage-original.html    the Kyoto temple this was built from
-├── dist/                       what actually gets deployed
-├── garden-assets/
-│   ├── treeline-*.webp         backdrop silhouettes keyed from the photos
-│   ├── maple-left/right.webp   the corner branches
-│   └── kids-reading.webp
-└── vendor/
-    ├── fonts.css
-    └── three.min.js            r149, MIT
+├── index.html            ← THE MASTER. Pages serves this. Needs the two
+│                           folders below sitting beside it.
+├── garden-assets/          the six keyed plates
+│   ├── treeline-*.webp     backdrop silhouettes, keyed against real sky
+│   ├── maple-left.webp     the lower-corner branches
+│   ├── maple-right.webp
+│   └── kids-reading.webp   the two of them, under the cherry
+├── vendor/
+│   ├── three.min.js        r149, MIT
+│   └── fonts.css
+├── .nojekyll               stops Pages running the folder through Jekyll
+│
+├── standalone/index.html   the same scene as one self-contained file
+└── archive/                the Kyoto temple this began as
 ```
 
 ## Run locally
