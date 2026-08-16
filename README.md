@@ -1,7 +1,14 @@
 # Her Garden
 
-A four-chapter walk through my auntie's garden, rebuilt live in Three.js and lit
-four different ways. Move the cursor to walk; scroll to go deeper.
+An interactive four-chapter walk through my auntie's garden, rebuilt live in
+Three.js and lit four different ways. Move the cursor to walk; scroll to go
+deeper.
+
+[View the live project](https://nocodekage.github.io/aunties-garden/) ·
+[View the source](https://github.com/nocodekage/aunties-garden/blob/main/index.html) ·
+[Read the build prompt](https://github.com/nocodekage/aunties-garden/blob/main/PROMPT.md)
+
+![Two children reading under a cherry tree at sunset, petals falling](og-image.jpg)
 
 > **The entry point is `index.html` at the repo root.** That is the master, and
 > it is what GitHub Pages serves. It needs `garden-assets/` and `vendor/` sitting
@@ -121,3 +128,18 @@ runtime keeps its MIT licence notice.
 Built on top of [Kage](https://github.com/MengTo/kage) by Meng To, which supplied
 the single-file architecture — the fixed canvas under scrolling content, the
 waypoint camera spline, the loading-job list, and the bloom pipeline.
+
+## How it was built
+
+Written with [Claude Code](https://claude.com/claude-code), directed by me.
+
+I set the brief and made the calls — which four lights, where the camera walks,
+that the ground needed real bark chips, that "wood" beats "forest". Claude wrote
+the shaders, the geometry and the post chain, and did the part I could not have
+done by eye: measuring its own output. The ink chapter's body copy was failing
+at 1.76:1 contrast against the paper and 1.01:1 against the mid wash, which is
+not low contrast, it is invisible. That got caught by measurement, not opinion.
+
+The build prompt in [`PROMPT.md`](PROMPT.md) is the honest version — written
+after the fact, describing what the thing actually turned out to need rather
+than what I thought it would need when I started.
